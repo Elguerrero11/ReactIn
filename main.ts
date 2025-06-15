@@ -1,134 +1,69 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { Plugin, Editor } from 'obsidian';
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+async function loadScript(url: string, globalName: string): Promise<void> {
+  if ((window as any)[globalName]) return;
+  await new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load ' + url));
+    document.head.appendChild(script);
+  });
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+export default class ReactInPlugin extends Plugin {
+  private dataview: any;
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+  async onload() {
+    await this.ensureLibs();
+    this.dataview = (this.app as any).plugins.plugins['dataview']?.api;
 
-	async onload() {
-		await this.loadSettings();
+    this.registerMarkdownCodeBlockProcessor('react', async (source, el) => {
+      try {
+        await this.ensureLibs();
+        const code = (window as any).Babel.transform(source, { presets: ['react'] }).code;
+        const Component = new Function('React', 'ReactDOM', 'app', 'dv', code)(
+          (window as any).React,
+          (window as any).ReactDOM,
+          this.app,
+          this.dataview
+        );
+        (window as any).ReactDOM.createRoot(el).render(
+          (window as any).React.createElement(Component)
+        );
+      } catch (err) {
+        el.createEl('pre', { text: 'React block error:\n' + err });
+      }
+    });
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+    this.addCommand({
+      id: '034',
+      name: 'Insert example React block',
+      editorCallback: (editor: Editor) => {
+        const snippet = [
+          '```react',
+          'function Example({dv}) {',
+          '  return <div>Number of pages: {dv.pages().length}</div>;',
+          '}',
+          'Example;',
+          '```',
+          ''
+        ].join('\n');
+        editor.replaceSelection(snippet);
+      }
+    });
+  }
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-	}
-
-	onunload() {
-
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
+  async ensureLibs() {
+    const libs: [string, string][] = [
+      ['https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js', 'React'],
+      ['https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js', 'ReactDOM'],
+      ['https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js', 'Babel'],
+      ['https://cdn.jsdelivr.net/npm/react-router-dom@6/umd/react-router-dom.production.min.js', 'ReactRouterDOM'],
+      ['https://cdn.jsdelivr.net/npm/framer-motion@10/dist/framer-motion.umd.js', 'FramerMotion']
+    ];
+    for (const [url, global] of libs) {
+      await loadScript(url, global);
+    }
+  }
 }
