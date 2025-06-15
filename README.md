@@ -50,10 +50,13 @@ Quick starting guide for new plugin devs:
 - Make sure your NodeJS is at least v16 (`node --version`).
 - `npm i` or `yarn` to install dependencies.
 - `npm run dev` to start compilation in watch mode.
+- If you only see `main.ts` inside your plugin folder, run `npm run build` once
+  to generate `main.js` before loading the plugin in Obsidian.
 
 ## Manually installing the plugin
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+- Copy over `main.js`, `styles.css`, and `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+- If `main.js` does not exist yet, run `npm run build` in the plugin folder to create it first.
 
 ## Improve code quality with eslint (optional)
 - [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
