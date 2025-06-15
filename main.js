@@ -57,13 +57,13 @@ module.exports = class ReactInPlugin extends Plugin {
       ['https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js','React'],
       ['https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js','ReactDOM'],
       ['https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js','Babel'],
-      ['https://cdn.jsdelivr.net/npm/@chakra-ui/react@2.8.1/dist/chakra-ui-react.umd.min.js','chakraReact'],
+      ['https://cdn.jsdelivr.net/npm/@chakra-ui/react@1.8.8/dist/chakra-ui-react.umd.min.js','chakraReact'],
       ['https://cdn.jsdelivr.net/npm/react-router-dom@6/umd/react-router-dom.production.min.js','ReactRouterDOM'],
       ['https://cdn.jsdelivr.net/npm/framer-motion@10/dist/framer-motion.umd.js','FramerMotion']
     ];
     for(const [url, global] of libs){
       await loadScript(url, global);
     }
-    await loadCSS('https://cdn.jsdelivr.net/npm/@chakra-ui/react@2.8.1/dist/chakra-ui.min.css');
+    await loadCSS('https://cdn.jsdelivr.net/npm/@chakra-ui/react@1.8.8/dist/chakra-ui.min.css');
   }
 };
